@@ -1,6 +1,6 @@
 # Ledger Lab
 
-Ledger Lab is a Python UTXO blockchain. It uses Ed25519 signatures and SHA-256 hashing, stores state in Postgres, and runs in Docker as a GCP-ready service. A React or Angular front end comes later. The repository is built with Cursor agents for a video series and a NatWest Principal Engineer (Digital Assets) interview, so the code stays small, typed, and tested.
+Ledger Lab is a Python UTXO blockchain. It uses Ed25519 signatures and SHA-256 hashing, stores state in Postgres, and runs in Docker as a GCP-ready service. A React or Angular front end comes later. The repository is built with Cursor agents for a video series, so the code stays small, typed, and tested.
 
 This file is the only copy of that description.
 
