@@ -10,13 +10,15 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-ledger}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
-    # About 40s for a cold start: 2s interval, 20 retries, after a 5s start period.
+    # About 40s for a cold start: 2s start_interval, 20 retries, after a 40s start period.
+    # Steady-state interval is 10s. start_interval needs Docker Engine 25+.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
-      interval: 2s
+      interval: 10s
       timeout: 3s
       retries: 20
-      start_period: 5s
+      start_period: 40s
+      start_interval: 2s
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -41,10 +43,11 @@ services:
         - python
         - -c
         - import os, urllib.request; urllib.request.urlopen("http://127.0.0.1:" + os.environ["PORT"] + "/ready", timeout=4)
-      interval: 2s
+      interval: 10s
       timeout: 5s
       retries: 20
-      start_period: 5s
+      start_period: 40s
+      start_interval: 2s
 
 volumes:
   postgres_data:

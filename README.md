@@ -18,7 +18,7 @@ Getting started. The project description, stack, and agent instructions are in [
 
 - Python 3.15 or newer (`requires-python` in `pyproject.toml`). `.python-version` pins 3.15.2. `uv sync` installs that interpreter.
 - uv 0.13.6 (`required-version` in `pyproject.toml`).
-- Docker with Compose (`docker compose`).
+- Docker Engine 25+ with Compose (`docker compose`). `start_interval` in `docker-compose.yml` needs Engine 25+.
 
 Running the stack needs Docker. Local development and the checks need uv.
 
@@ -55,7 +55,7 @@ Postgres stays in Compose. The node runs on the host and uses the port Compose p
 
 ```bash
 uv sync
-docker compose up --detach --wait postgres
+docker compose up --wait postgres
 ```
 
 `uv sync` creates `.venv` and installs the project and the dev tools (ruff, mypy, pytest, and pre-commit). `uv run` uses that interpreter (Python 3.15.2). The Postgres command returns when its healthcheck is healthy. Compose publishes Postgres on `127.0.0.1`, port 5432.
@@ -84,6 +84,8 @@ uv run pytest
 ```
 
 `pre-commit install` writes `.git/hooks/pre-commit`. That hook, and `pre-commit run --all-files`, run ruff check, ruff format --check, and mypy. Tool settings live in `pyproject.toml`. pytest does not need a running Postgres.
+
+The VS Code/Cursor mypy extension does not currently work with this project's Python 3.15. It bundles typing-extensions 4.12.2, which references `typing.no_type_check_decorator`, removed in Python 3.15; the fix is pending in [microsoft/vscode-mypy#636](https://github.com/microsoft/vscode-mypy/pull/636). Until it ships, rely on the pre-commit hook or run `uv run mypy`.
 
 CI in `.github/workflows/ci.yml` runs on pull requests and on pushes to `main`.
 
