@@ -5,12 +5,15 @@ import threading
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
+from http import HTTPStatus
+from http.server import BaseHTTPRequestHandler
+from typing import cast
 
 import pytest
 
 from ledger_lab.config import Settings
 from ledger_lab.db import DatabaseCheck
-from ledger_lab.server import make_server
+from ledger_lab.server import _write, make_server
 
 _PASSWORD = "placeholder"
 _CLIENT_TIMEOUT_SECONDS = 2
@@ -99,3 +102,34 @@ def test_unknown_path_is_not_found(port: int) -> None:
     status, body = _get(port, "/missing")
     assert status == 404
     assert body == {"status": "not_found"}
+
+
+class _ClosedWriter:
+    def __init__(self) -> None:
+        self.writes = 0
+
+    def write(self, _payload: bytes) -> int:
+        self.writes += 1
+        raise BrokenPipeError
+
+
+class _ClosingHandler:
+    def __init__(self, writer: _ClosedWriter) -> None:
+        self.wfile = writer
+
+    def send_response(self, _code: int, _message: str | None = None) -> None:
+        pass
+
+    def send_header(self, _keyword: str, _value: str) -> None:
+        pass
+
+    def end_headers(self) -> None:
+        pass
+
+
+def test_write_returns_when_the_client_closes() -> None:
+    writer = _ClosedWriter()
+    # BaseHTTPRequestHandler.__init__ binds a socket. _write only calls these methods.
+    handler = cast(BaseHTTPRequestHandler, _ClosingHandler(writer))
+    _write(handler, HTTPStatus.OK, {"status": "ok"})
+    assert writer.writes == 1
