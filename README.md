@@ -58,7 +58,7 @@ uv sync
 docker compose up --wait postgres
 ```
 
-`uv sync` creates `.venv` and installs the project and the dev tools (ruff, mypy, pytest, and pre-commit). `uv run` uses that interpreter (Python 3.15.2). The Postgres command returns when its healthcheck is healthy. Compose publishes Postgres on `127.0.0.1`, port 5432.
+`uv sync` creates `.venv` and installs the project and the dev tools (ruff, mypy, pytest, pytest-cov, and pre-commit). `uv run` uses that interpreter (Python 3.15.2). The Postgres command returns when its healthcheck is healthy. Compose publishes Postgres on `127.0.0.1`, port 5432.
 
 Running the node on the host needs macOS, Linux or WSL2. Shutdown uses `signal.sigwait` and `signal.pthread_sigmask`, which native Windows does not provide. The Compose stack does not use that host path.
 
@@ -81,15 +81,18 @@ Stop Postgres with `docker compose down`. Add `-v` to delete the data volume.
 uv run pre-commit install
 uv run pre-commit run --all-files
 uv run pytest
+uv run pytest --cov
 ```
 
 `pre-commit install` writes `.git/hooks/pre-commit`. That hook, and `pre-commit run --all-files`, run ruff check, ruff format --check, and mypy. Tool settings live in `pyproject.toml`. pytest does not need a running Postgres.
+
+`uv run pytest` runs the unit tests and does not measure coverage, so one test file still runs on its own. `uv run pytest --cov` measures branch coverage of `ledger_lab` and fails when that total is below `fail_under` in `pyproject.toml`. The measured total is 100% (166/166 statements and 34/34 branches). The floor is 97. Raise the floor in the change that raises coverage. Do not lower it without review. A `# pragma: no cover` is not allowed unless that line states why the code is excluded. Put a test path before `--cov` (`uv run pytest tests/test_config.py --cov`). The argument after `--cov` is the coverage source. A subset passes its tests and then fails the floor, because code that subset does not execute counts as missed.
 
 The VS Code/Cursor mypy extension does not currently work with this project's Python 3.15. It bundles typing-extensions 4.12.2, which references `typing.no_type_check_decorator`, removed in Python 3.15; the fix is pending in [microsoft/vscode-mypy#636](https://github.com/microsoft/vscode-mypy/pull/636). Until it ships, rely on the pre-commit hook or run `uv run mypy`.
 
 CI in `.github/workflows/ci.yml` runs on pull requests and on pushes to `main`.
 
-- `lint, typecheck, and test` runs `uv sync --frozen`, `uv run pre-commit run --all-files`, and `uv run pytest`.
+- `lint, typecheck, and test` runs `uv sync --frozen`, `uv run pre-commit run --all-files`, and `uv run pytest --cov --cov-report=term-missing --cov-report=xml`. The XML report is uploaded as the `coverage-xml` artifact when that pytest command finishes, including when it exits because coverage is below `fail_under`. The job still fails in that case.
 - `docker compose up --wait` runs `docker compose up --build --wait`, then `docker compose down -v`.
 
 ## Troubleshooting
