@@ -1,0 +1,152 @@
+---
+description: Python style for Ledger Lab (Google Python Style Guide, repo toolchain)
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Python style
+
+Based on the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html).
+
+Lint, format, and typecheck commands live in `.pre-commit-config.yaml`; tool settings live in `pyproject.toml` (`engineering.mdc`). This rule does **not** restate Google's 80-column limit or pylint — this repo uses **ruff** (`line-length = 100`) and **mypy** strict.
+
+## Naming
+
+- Modules/files: short `snake_case.py` names; always `.py`; never dashes.
+- Packages: short lowercase names; avoid underscores when practical.
+- Classes / exceptions: `CapWords`. Exception types end in `Error` when defining custom exceptions (`LedgerError`, not `LedgerException`).
+- Functions, methods, variables, module-level helpers: `snake_case`.
+- Module-level constants: `UPPER_SNAKE_CASE`.
+- Protected / internal: single leading underscore (`_helper`). Prefer that over name-mangling `__dunder` on ordinary attributes.
+- Avoid: single-letter names except short locals in tiny scopes (`i`, `j`, `x`); names that shadow builtins (`list`, `id`, `type`, `input`); hyphenated names; CapWords for functions.
+
+```python
+# BAD
+class ledger_node: ...
+def ParseBlock(): ...
+maxAmount = 1
+
+# GOOD
+class LedgerNode: ...
+def parse_block() -> None: ...
+MAX_AMOUNT = 1
+```
+
+## Imports
+
+- Import packages and modules, not individual classes/functions — except typing symbols and other Google-exempt static-analysis helpers.
+- No wildcard imports (`from x import *`).
+- Prefer absolute imports; avoid relative import names that rely on path tricks.
+- `from __future__ import annotations` is fine when it helps annotations.
+- Group and sort imports with **ruff**; do not hand-craft Google's three-section layout if it fights the formatter.
+- Do not put importable side effects at module import time beyond registration that must run once.
+
+```python
+# BAD
+from pathlib import Path
+from typing import *
+
+# GOOD
+import pathlib
+from typing import Any
+```
+
+## Comments and docstrings
+
+- Docstrings use `"""` (PEP 257). Summary line is one sentence ending in `.` `?` or `!`. Extra paragraphs follow a blank line after the summary.
+- Module docstring: describe purpose and how to run or use the module when non-obvious.
+- Public functions/methods: docstring when the caller needs semantics beyond the name and typed signature (side effects, units, invariants, failure modes).
+- Classes: document the type's role; attributes that are part of the public contract when not obvious from annotations.
+- Skip noise docstrings that only restate the name or signature.
+- Test modules / `test_` methods: docstrings optional unless they explain unusual setup.
+- Use `Args:`, `Returns:` / `Yields:`, `Raises:` sections when the signature alone is not enough; keep style consistent within a file.
+- Block comments explain *why*; place them above the code they describe. Prefer complete sentences.
+- TODOs: `TODO:` with enough context to act on; link a ticket when one exists (`TODO(SCRUM-25): ...`).
+
+```python
+def encode_amount(amount: int) -> bytes:
+    """Encode a non-negative amount as big-endian u64.
+
+    Raises:
+        ValueError: If amount is out of range.
+    """
+```
+
+## Language features
+
+### Exceptions
+
+- Prefer built-in exception types for precondition failures (`ValueError`, `TypeError`, `KeyError`).
+- Never bare `except:`. Do not catch `Exception` unless at an isolation boundary that logs and continues or re-raises.
+- Keep `try` bodies small. Use `finally` / context managers for cleanup.
+- Do not use `assert` for required runtime validation in production paths (asserts can be stripped). Tests may use `assert`.
+
+### Defaults, truthiness, and state
+
+- Never use mutable default arguments; use `None` and assign inside the function.
+- Avoid module-level mutable global state that callers mutate; prefer explicit objects or functions that take state.
+- Use `is None` / `is not None` for None checks. Prefer implicit truthiness for containers (`if items:`) unless `0`/`False` must stay distinct from empty/`None`.
+- Do not write `if x == True` / `if x == False`.
+
+```python
+# BAD
+def append(item: str, items: list[str] = []) -> list[str]:
+    items.append(item)
+    return items
+
+# GOOD
+def append(item: str, items: list[str] | None = None) -> list[str]:
+    if items is None:
+        items = []
+    items.append(item)
+    return items
+```
+
+### Comprehensions, lambdas, generators
+
+- Simple comprehensions are fine; avoid nested or multi-clause comprehensions that hide control flow — use a loop.
+- Lambdas: one-liners only. Prefer generator expressions over `map`/`filter` with a lambda.
+- Generators are fine; document with `Yields:` when a docstring is present.
+
+### Other language rules
+
+- Prefer default iterators (`for x in items`, `if key in mapping`) over index/key fiddling or `.keys()` when equivalent.
+- Conditional expressions (`x if cond else y`) only for simple cases; otherwise use `if`/`else` statements.
+- Nested functions/classes: OK when closing over a local; do not nest only to hide helpers — use module-level `_name` so tests can reach them.
+- Properties: fine for simple derived attributes; do not use properties for expensive work or for behavior subclasses must override with different signatures.
+- Decorators: use when the advantage is clear; document that the callable is a decorator. Prefer module-level functions over `@staticmethod`.
+- Avoid power features (heavy metaclasses, reflection, custom `__*__` beyond need) unless clearly justified.
+- Prefer small, focused functions. Split long functions when hard to test or reuse.
+- Scripts with a CLI entry: guard with `if __name__ == "__main__":`.
+- Close files/sockets with `with` context managers.
+
+## Formatting (defer to ruff)
+
+Agents do not bikeshed formatting. Run / rely on ruff as configured in `pyproject.toml`.
+
+Still write code that matches Google intent where the formatter will not invent design:
+
+- No semicolons; one statement per line.
+- Spaces for indentation; never tabs (ruff/formatter enforce).
+- Prefer implicit line continuation inside `()`, `[]`, `{}` over `\` continuations.
+- Trailing commas in multi-line containers are encouraged so ruff keeps one-item-per-line layouts stable.
+- f-strings or `format` for ordinary string formatting; for logging APIs that take %-patterns, pass a literal pattern plus args (not an f-string) when that API expects lazy formatting.
+- Prefer `"""` for multi-line strings; docstrings always use `"""`.
+
+## Typing
+
+- Annotate new and changed public APIs (parameters and return types). Variable annotations when they clarify or help mypy.
+- mypy in strict mode must pass; do not silence errors without a reason (`engineering.mdc`). Prefer fixing types over `# type: ignore`; if ignore is required, use the narrowest code and a short comment.
+- Prefer modern builtins and `|` unions (`list[str]`, `dict[str, int]`, `str | None`) over `typing.List` / `Optional` in new code, unless matching surrounding style in an old file briefly requires otherwise.
+- Use `None` for absent values; annotate optional returns as `T | None`.
+- Prefer `collections.abc` for abstract container params (`Iterable`, `Mapping`, `Sequence`) when any such type is accepted.
+- Do not use `Any` to dodge modeling; reserve it for true dynamic boundaries and narrow ASAP.
+- Keep annotation imports minimal; with `from __future__ import annotations`, forward refs are usually unnecessary.
+
+```python
+def parse_height(raw: str) -> int:
+    """Parse a block height from decimal text."""
+    if not raw.isdigit():
+        raise ValueError(f"invalid height: {raw!r}")
+    return int(raw)
+```
