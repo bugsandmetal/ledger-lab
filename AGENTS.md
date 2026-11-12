@@ -49,4 +49,4 @@ docker compose up --build --wait
 docker compose down -v
 ```
 
-`uv run pytest` does not measure coverage. `uv run pytest --cov` measures branch coverage and fails below `fail_under` in `pyproject.toml`. Put a test path before `--cov`; a path after `--cov` is the coverage source. GitHub Actions runs the pre-commit, coverage, and Compose checks on pull requests and on pushes to `main`, and uploads `coverage.xml`. The workflow is `.github/workflows/ci.yml`.
+`uv run pytest` does not measure coverage. `uv run pytest --cov` measures branch coverage and fails below `fail_under` in `pyproject.toml`. Put a test path before `--cov`; a path after `--cov` is the coverage source. GitHub Actions runs the pre-commit, coverage, and Compose checks on pull requests and on pushes to `main`, and uploads `coverage.xml` when the coverage command finishes, including when the floor fails. The workflow is `.github/workflows/ci.yml`.

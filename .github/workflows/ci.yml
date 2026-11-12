@@ -40,9 +40,13 @@ jobs:
         run: uv run pre-commit run --all-files
 
       - name: Test
+        id: coverage
         run: uv run pytest --cov --cov-report=term-missing --cov-report=xml
 
+      # fail_under exits non-zero after writing coverage.xml. Publish that
+      # report on a red run. Skip the upload when this step never ran.
       - name: Upload coverage XML
+        if: ${{ steps.coverage.outcome == 'success' || steps.coverage.outcome == 'failure' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-xml

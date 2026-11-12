@@ -92,7 +92,7 @@ The VS Code/Cursor mypy extension does not currently work with this project's Py
 
 CI in `.github/workflows/ci.yml` runs on pull requests and on pushes to `main`.
 
-- `lint, typecheck, and test` runs `uv sync --frozen`, `uv run pre-commit run --all-files`, and `uv run pytest --cov --cov-report=term-missing --cov-report=xml`. The XML report is uploaded as the `coverage-xml` artifact. The job fails when branch coverage is below `fail_under`.
+- `lint, typecheck, and test` runs `uv sync --frozen`, `uv run pre-commit run --all-files`, and `uv run pytest --cov --cov-report=term-missing --cov-report=xml`. The XML report is uploaded as the `coverage-xml` artifact when that pytest command finishes, including when it exits because coverage is below `fail_under`. The job still fails in that case.
 - `docker compose up --wait` runs `docker compose up --build --wait`, then `docker compose down -v`.
 
 ## Troubleshooting
